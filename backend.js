@@ -275,18 +275,6 @@ exports.extract = function (cwd, opts) {
         return next(new Error('Invalid path detected'));
       }
     
-      xfs.unlink(name, function () {
-        var srcpath = path.resolve(cwd, header.linkname);
-    
-        xfs.link(srcpath, name, function (err) {
-          if (err && err.code === 'EPERM' && opts.hardlinkAsFilesFallback) {
-            stream = xfs.createReadStream(srcpath);
-            return onfile();
-          }
-    
-          stat(err);
-        });
-      });
     };
 
     var onfile = function () {
