@@ -5,6 +5,7 @@ var mkdirp = require('mkdirp')
 var fs = require('fs')
 var path = require('path')
 var os = require('os')
+const cwd = process.cwd(); // Current working directory
 
 var win32 = os.platform() === 'win32'
 
@@ -259,31 +260,34 @@ exports.extract = function (cwd, opts) {
     }
 
     var onlink = function () {
-      if (win32) return next() // skip links on win for now before it can be tested
+      if (win32) return next(); // skip links on win for now before it can be tested
     
       // Validate paths to prevent directory traversal
-      function isValidPath(path) {
-        return !path.includes('..');
+      function isValidPath(base, target) {
+        const targetPath = path.resolve(base, target);
+        return targetPath.startsWith(base);
       }
     
+      const baseDir = path.resolve(cwd); // Base directory for validation
+    
       // Ensure the name and header.linkname do not contain path traversal segments
-      if (!isValidPath(name) || !isValidPath(header.linkname)) {
+      if (!isValidPath(baseDir, name) || !isValidPath(baseDir, header.linkname)) {
         return next(new Error('Invalid path detected'));
       }
     
       xfs.unlink(name, function () {
-        var srcpath = path.resolve(cwd, header.linkname)
+        var srcpath = path.resolve(cwd, header.linkname);
     
         xfs.link(srcpath, name, function (err) {
           if (err && err.code === 'EPERM' && opts.hardlinkAsFilesFallback) {
-            stream = xfs.createReadStream(srcpath)
-            return onfile()
+            stream = xfs.createReadStream(srcpath);
+            return onfile();
           }
     
-          stat(err)
-        })
-      })
-    }
+          stat(err);
+        });
+      });
+    };
 
     var onfile = function () {
       var ws = xfs.createWriteStream(name)
