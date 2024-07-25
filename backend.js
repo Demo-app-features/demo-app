@@ -260,15 +260,26 @@ exports.extract = function (cwd, opts) {
 
     var onlink = function () {
       if (win32) return next() // skip links on win for now before it can be tested
+    
+      // Validate paths to prevent directory traversal
+      function isValidPath(path) {
+        return !path.includes('..');
+      }
+    
+      // Ensure the name and header.linkname do not contain path traversal segments
+      if (!isValidPath(name) || !isValidPath(header.linkname)) {
+        return next(new Error('Invalid path detected'));
+      }
+    
       xfs.unlink(name, function () {
         var srcpath = path.resolve(cwd, header.linkname)
-
+    
         xfs.link(srcpath, name, function (err) {
           if (err && err.code === 'EPERM' && opts.hardlinkAsFilesFallback) {
             stream = xfs.createReadStream(srcpath)
             return onfile()
           }
-
+    
           stat(err)
         })
       })
